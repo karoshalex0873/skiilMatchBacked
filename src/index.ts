@@ -19,7 +19,7 @@ const app = express();
 // load port from .env
 const PORT = process.env.PORT
 
-app.use(cors({
+const corsOptions = {
   origin: [
     "http://localhost:4200",
     "http://dkskillmatch.s3-website.eu-north-1.amazonaws.com",
@@ -28,14 +28,17 @@ app.use(cors({
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
-}));
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // For preflight requests
+
 
 // ✅ Then other middlewares
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
-app.options('*', cors());
 
 
 
