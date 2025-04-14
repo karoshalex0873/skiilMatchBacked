@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import cors from 'cors'
 import jobsRoutes from './routes/jobsRoutes';
 import userRoutes from './routes/userRoutes';
+import { seedRoles } from './config/seed';
 
 
 dotenv.config();
@@ -25,7 +26,7 @@ app.use(express.urlencoded({ extended: true }));
 
 
 app.use(cors({
-  origin: ["http://localhost:4200","http://dkskillmatch.s3-website.eu-north-1.amazonaws.com"],
+  origin: ["http://localhost:4200","https://dkskillmatch.s3-website.eu-north-1.amazonaws.com"],
   methods: ["GET", "PUT", "POST", "DELETE","PATCH"],
   credentials: true
 }))
@@ -41,6 +42,7 @@ app.get('', (req, res) => {
 app.use('/api/v1/auth', authRoutes)
 
 
+
 //router for post questions
 app.use('/api/v1/jobs', jobsRoutes)
 
@@ -52,14 +54,25 @@ app.use('/api/v1/user',userRoutes)
 
 
 // database initilization
+
+
 AppDataSource.initialize()
-  .then(() => console.log("🚀 Database connected succsefully"))
-  .catch((error) => console.log("Database connection error:", error))
+  .then(async () => {
+    console.log("🚀 Database connected successfully");
+
+    // 🌱 Seed roles before anything else
+    await seedRoles();
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+
+    
+  })
+  .catch((error) => console.log("Database connection error:", error));
+
 
 // start server
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+
 
 
 

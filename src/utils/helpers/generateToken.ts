@@ -17,23 +17,27 @@ export const generateToken = (res: Response, userId: string) => {
   try {
     const accessToken = jwt.sign({ userId }, jwt_secret, { expiresIn: '30m' })
 
-    const refreshToken = jwt.sign({ userId },refreshSecret, { expiresIn: '30d' })
+    const refreshToken = jwt.sign({ userId }, refreshSecret, { expiresIn: '30d' })
 
-    // access token as HTTPonly secure and samSite=strict
-    res.cookie("access_token",accessToken,{
-      httpOnly:true,
-      secure: process.env.NODE_ENV !== 'development',
-      sameSite: "strict",
+    const isProduction = process.env.NODE_ENV !== 'production' // evaluates to true
+
+    // Send access token cookie (non-httpOnly in dev/test)
+    res.cookie("access_token", accessToken, {
+      httpOnly: isProduction, // only httpOnly if in production
+      secure: isProduction,   // only secure in production
+      sameSite: "lax",         // "lax" works better for dev, "strict" blocks cross-origin
       maxAge: 90 * 60 * 1000,
-    })
-
-    // Set refresh token as HTTPOnly
-    res.cookie("refresh_token", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV !== "development",
-      sameSite: "strict",
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
+
+    // Send refresh token cookie
+    res.cookie("refresh_token", refreshToken, {
+      httpOnly: isProduction,
+      secure: isProduction,
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+
     return { accessToken, refreshToken };
   } catch (error) {
     console.error('Error generating JWT:', error);
