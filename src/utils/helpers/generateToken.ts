@@ -28,6 +28,7 @@ export const generateToken = (res: Response, userId: string) => {
       sameSite: process.env.NODE_ENV !== 'development' ? "none" : "lax",
       maxAge: 90 * 60 * 1000,
     })
+    
 
     // Set refresh token as HTTPOnly
     res.cookie("refresh_token", refreshToken, {
