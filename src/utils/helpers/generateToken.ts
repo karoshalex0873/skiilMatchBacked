@@ -19,12 +19,11 @@ export const generateToken = (res: Response, userId: string) => {
 
     const refreshToken = jwt.sign({ userId },refreshSecret, { expiresIn: '30d' })
 
-    console.log("ENV:", process.env.NODE_ENV); // Should log 'development' or 'production'
 
 
     // access token as HTTPonly secure and samSite=strict
     res.cookie("access_token",accessToken,{
-      httpOnly:true,
+      httpOnly:false, // turn to true
       secure: false,//process.env.NODE_ENV !== 'development',
       sameSite: "strict",
       maxAge: 90 * 60 * 1000,
@@ -32,7 +31,7 @@ export const generateToken = (res: Response, userId: string) => {
 
     // Set refresh token as HTTPOnly
     res.cookie("refresh_token", refreshToken, {
-      httpOnly: true,
+      httpOnly: false,  // trun to true
       secure: false,// process.env.NODE_ENV !== "development",
       sameSite: "strict",
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
