@@ -17,23 +17,23 @@ export const generateToken = (res: Response, userId: string) => {
   try {
     const accessToken = jwt.sign({ userId }, jwt_secret, { expiresIn: '30m' })
 
-    const refreshToken = jwt.sign({ userId },refreshSecret, { expiresIn: '30d' })
+    const refreshToken = jwt.sign({ userId }, refreshSecret, { expiresIn: '30d' })
 
 
 
     // access token as HTTPonly secure and samSite=strict
-    res.cookie("access_token",accessToken,{
-      httpOnly:false, // turn to true
-      secure: false,//process.env.NODE_ENV !== 'development',
-      sameSite: "strict",
+    res.cookie("access_token", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV !== 'development',
+      sameSite: process.env.NODE_ENV !== 'development' ? "none" : "lax",
       maxAge: 90 * 60 * 1000,
     })
 
     // Set refresh token as HTTPOnly
     res.cookie("refresh_token", refreshToken, {
-      httpOnly: false,  // trun to true
-      secure: false,// process.env.NODE_ENV !== "development",
-      sameSite: "strict",
+      httpOnly: true,
+      secure: process.env.NODE_ENV !== "development",
+      sameSite: process.env.NODE_ENV !== "development"?"none":"lax",
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
     return { accessToken, refreshToken };

@@ -26,8 +26,9 @@ app.use(express.urlencoded({ extended: true }));
 
 
 app.use(cors({
-  origin: ["http://localhost:4200","https://dkskillmatch.s3-website.eu-north-1.amazonaws.com"],
-  methods: ["GET", "PUT", "POST", "DELETE","PATCH"],
+  origin: ["http://localhost:4200", "http://dkskillmatch.s3-website.eu-north-1.amazonaws.com"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Include OPTIONS
+  allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }))
 
@@ -47,7 +48,7 @@ app.use('/api/v1/auth', authRoutes)
 app.use('/api/v1/jobs', jobsRoutes)
 
 // user Routes
-app.use('/api/v1/user',userRoutes)
+app.use('/api/v1/user', userRoutes)
 
 
 
@@ -66,7 +67,7 @@ AppDataSource.initialize()
       console.log(`Server is running on port ${PORT}`);
     });
 
-    
+
   })
   .catch((error) => console.log("Database connection error:", error));
 
