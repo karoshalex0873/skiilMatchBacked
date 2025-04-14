@@ -19,18 +19,6 @@ const app = express();
 // load port from .env
 const PORT = process.env.PORT
 
-// middleware to parse json request bodies
-app.use(express.json());
-app.use(cookieParser());
-app.use(express.urlencoded({ extended: true }));
-
-
-// app.use(cors({
-//   origin: ["http://localhost:4200", "http://dkskillmatch.s3-website.eu-north-1.amazonaws.com", "https://skill-matc-ai-frontend.vercel.app"],
-//   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Include OPTIONS
-//   allowedHeaders: ["Content-Type", "Authorization"],
-//   credentials: true
-// }))
 app.use(cors({
   origin: [
     "http://localhost:4200",
@@ -41,6 +29,12 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
+// ✅ Then other middlewares
+app.use(express.json());
+app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
+
 
 
 // welcome message
