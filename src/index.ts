@@ -25,12 +25,22 @@ app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
 
+// app.use(cors({
+//   origin: ["http://localhost:4200", "http://dkskillmatch.s3-website.eu-north-1.amazonaws.com", "https://skill-matc-ai-frontend.vercel.app"],
+//   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Include OPTIONS
+//   allowedHeaders: ["Content-Type", "Authorization"],
+//   credentials: true
+// }))
 app.use(cors({
-  origin: ["http://localhost:4200", "http://dkskillmatch.s3-website.eu-north-1.amazonaws.com", "https://skill-matc-ai-frontend.vercel.app"],
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Include OPTIONS
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true
-}))
+  origin: [
+    "http://localhost:4200",
+    "http://dkskillmatch.s3-website.eu-north-1.amazonaws.com",
+    "https://skill-matc-ai-frontend.vercel.app"
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 
 
 // welcome message
