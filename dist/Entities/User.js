@@ -78,6 +78,10 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "cv", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'json', nullable: true }),
+    __metadata("design:type", Object)
+], User.prototype, "path", void 0);
+__decorate([
     (0, typeorm_1.OneToMany)(() => Jobs_1.Jobs, job => job.user),
     __metadata("design:type", Array)
 ], User.prototype, "jobs", void 0);

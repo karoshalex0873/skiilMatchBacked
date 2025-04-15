@@ -21,14 +21,14 @@ const generateToken = (res, userId) => {
         res.cookie("access_token", accessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV !== 'development',
-            sameSite: "strict",
+            sameSite: process.env.NODE_ENV !== 'development' ? "none" : "lax",
             maxAge: 90 * 60 * 1000,
         });
         // Set refresh token as HTTPOnly
         res.cookie("refresh_token", refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV !== "development",
-            sameSite: "strict",
+            sameSite: process.env.NODE_ENV !== "development" ? "none" : "lax",
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
         });
         return { accessToken, refreshToken };

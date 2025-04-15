@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getUserApplications = exports.applyJob = exports.createJob = exports.getJobs = void 0;
+exports.deleteLearningPath = exports.getLearningPath = exports.createLearningPath = exports.getUserApplications = exports.applyJob = exports.createJob = exports.getJobs = void 0;
 const asyncHandler_1 = __importDefault(require("../midllewares/asyncHandler"));
 const data_source_1 = require("../config/data-source");
 const Jobs_1 = require("../Entities/Jobs");
@@ -218,6 +218,7 @@ exports.applyJob = (0, asyncHandler_1.default)((req, res, next) => __awaiter(voi
         application,
     });
 }));
+// fuction to get apllications for specifi user
 exports.getUserApplications = (0, asyncHandler_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const user = req.user;
     // 1. Ensure that use is the one
@@ -251,4 +252,103 @@ exports.getUserApplications = (0, asyncHandler_1.default)((req, res, next) => __
         count: applications.length,
         applications,
     });
+}));
+// fuction to generate the leaning path
+exports.createLearningPath = (0, asyncHandler_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        const { skills, goal, studyHours } = req.body;
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.user_id;
+        const prompt = `
+        You are a JSON generator bot. Your ONLY job is to return valid JSON that can be parsed with JSON.parse().
+
+        Create a detailed 2-Months learning path for someone aiming to become a ${goal}.
+        Current skills: ${skills.join(', ')}.
+        Weekly study time: ${studyHours} hours.
+
+        Strict format:
+        {
+          "milestones": [
+            {
+              "week": number,
+              "title": string,
+              "description": string,
+              "resources": {
+                "articles": string[],
+                "videos": string[],
+                "projects": string[]
+              }
+            }
+          ]
+        }
+
+        Guidelines:
+        - DO NOT include \`\`\`json or \`\`\` in the output.
+        - DO NOT include any explanation or introductory text.
+        - Just output valid, parsable JSON.
+        - All URLs must be real  and Valid (MDN, YouTube, freeCodeCamp, docs, etc.).
+        - video URls must be latest from 2018-Present
+        - All fields must be filled properly.
+        - Do not use placeholders. Use real resources.
+        - All links in the "videos" array must be direct links to **actual, publicly available video pages** that can be watched (not deleted or private).
+        - Avoid videos that say “This video isn't available anymore.”
+        - Prefer videos from reputable YouTube channels known for consistent availability (e.g., freeCodeCamp, Traversy Media, The Net Ninja, Fireship, JS Mastery etc.).
+      `;
+        // 1. Call model
+        const result = yield model.generateContent([prompt]);
+        const rawText = yield result.response.text();
+        // 2. Clean output
+        const cleanedText = rawText
+            .replace(/```json/g, '')
+            .replace(/```/g, '')
+            .trim();
+        // 3. Safe parse with fallback
+        let data;
+        try {
+            data = JSON.parse(cleanedText);
+        }
+        catch (err) {
+            console.error("Invalid JSON:", cleanedText);
+            return res.status(400).json({ error: "Model returned invalid JSON format" });
+        }
+        if (!data.milestones ||
+            !Array.isArray(data.milestones) ||
+            !data.milestones.every((m) => typeof m.week === 'number' &&
+                typeof m.title === 'string' &&
+                typeof m.description === 'string' &&
+                m.resources &&
+                Array.isArray(m.resources.articles) &&
+                Array.isArray(m.resources.videos) &&
+                Array.isArray(m.resources.projects))) {
+            return res.status(400).json({ error: 'Invalid data structure in response' });
+        }
+        // 5. Save to DB
+        const user = yield userDef.findOneBy({ user_id: userId });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        user.path = data;
+        yield user.save();
+        res.json(data);
+    }
+    catch (error) {
+        console.error('Error generating path:', error);
+        res.status(500).json({ error: 'Failed to generate learning path' });
+    }
+}));
+exports.getLearningPath = (0, asyncHandler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    const user = yield userDef.findOneBy({ user_id: (_a = req.user) === null || _a === void 0 ? void 0 : _a.user_id });
+    if (!(user === null || user === void 0 ? void 0 : user.path))
+        return res.status(404).json({ error: 'No learning path found' });
+    res.json(user.path);
+}));
+exports.deleteLearningPath = (0, asyncHandler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    const user = yield userDef.findOneBy({ user_id: (_a = req.user) === null || _a === void 0 ? void 0 : _a.user_id });
+    if (!user)
+        return res.status(404).json({ error: 'User not found' });
+    user.path = null;
+    yield user.save();
+    res.json({ message: 'Learning path deleted' });
 }));

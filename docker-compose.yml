@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  backend:
+    build: .
+    container_name: skillmatch-backend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    environment:
+      NODE_ENV: development
+      LOCAL_DB_HOST: postgres
+      LOCAL_DB_PORT: 5432
+      LOCAL_DB_USER: postgres
+      LOCAL_DB_PASSWORD: root
+      LOCAL_DB_NAME: SkillMatch_AI
+      PORT: 3000
+      ACCESS_TOKEN_SECRET: 4dca6d63bcf0a05998abc6a852feddc2d5e6ad0ad3a99086ae000b215eed3b99
+      REFRESH_TOKEN_SECRET: a84a67fc2e5c70545cca687444ce357297b621c0c141e2153639e7b17f4bef65
+      JWT_SECRET: mySuperSecretKey123!
+      GOOGLE_GEMINI_API_KEY: AIzaSyACzAGP8AXSSwfAEpz8zjG6So61T0DPESQ
+    command: sh -c "npm run build && node dist/index.js"
+    volumes:
+      - .:/app
+      - /app/node_modules # Prevent using local node_modules
+
+  postgres:
+    image: postgres:14
+    container_name: skillmatch-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: SkillMatch_AI
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

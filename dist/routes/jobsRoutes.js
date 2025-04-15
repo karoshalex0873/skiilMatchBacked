@@ -12,4 +12,7 @@ router.get('/getAll', protect_1.protect, roleGuard_1.jobSeekerAndEmployer, jobsC
 router.post('/create', protect_1.protect, roleGuard_1.Employer, jobsControllers_1.createJob);
 router.post("/apply/:job_id", protect_1.protect, jobsControllers_1.applyJob);
 router.get("/getApplications", protect_1.protect, jobsControllers_1.getUserApplications);
+router.post("/path", protect_1.protect, jobsControllers_1.createLearningPath);
+router.get('/path', protect_1.protect, jobsControllers_1.getLearningPath);
+router.delete('/path', protect_1.protect, jobsControllers_1.deleteLearningPath);
 exports.default = router;

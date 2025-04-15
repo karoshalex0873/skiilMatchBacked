@@ -62,6 +62,9 @@ export class User extends BaseEntity {
   @Column({ nullable: true })
   cv?: string;
 
+  @Column({ type: 'json', nullable: true }) 
+  path?: any;
+
 
   // Relationships with tables
   @OneToMany(() => Jobs, job => job.user)
