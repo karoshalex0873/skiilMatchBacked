@@ -186,8 +186,9 @@ export const createJob = asyncHandler(
         experienceLevel,
         salaryRange,
         type,
-        user: { user_id: user.role }
+        user: { user_id: user.user_id }
       });
+      
 
       // saving the job
       await job.save();
@@ -296,6 +297,24 @@ export const getUserApplications = asyncHandler(
   }
 )
 
+export const getRecruiterJobs = asyncHandler(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    try {
+      const jobs = await jobDef.find({
+        where: { user: { user_id: req.user?.user_id } }, // Assuming 'user' is a relation in the Jobs entity
+        order: { job_id: 'DESC' }
+      });
+
+      res.status(200).json({
+        success: true,
+        count: jobs.length,
+        data: jobs
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 
 // fuction to generate the leaning path

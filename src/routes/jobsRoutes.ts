@@ -1,16 +1,17 @@
 import  express from 'express'
-import { applyJob, createJob, createLearningPath, deleteLearningPath, getJobs, getLearningPath, getUserApplications } from '../controllers/jobsControllers'
+import { applyJob, createJob, createLearningPath, deleteLearningPath, getJobs, getLearningPath, getRecruiterJobs, getUserApplications } from '../controllers/jobsControllers'
 import { protect } from '../midllewares/auth/protect'
 import { Employer, jobSeeker, jobSeekerAndEmployer } from '../midllewares/auth/roleGuard'
 
 const router = express.Router()
 
 
-router.get('/getAll',protect,jobSeekerAndEmployer,getJobs)
-router.post('/create',protect,Employer,createJob)
-router.post("/apply/:job_id", protect, applyJob);
-router.get("/getApplications",protect,getUserApplications)
-router.post("/path",protect, createLearningPath)
-router.get('/path',protect,getLearningPath)
-router.delete('/path',protect,deleteLearningPath)
+router.get('/getAll',jobSeekerAndEmployer,getJobs)
+router.post('/create',Employer,createJob)
+router.get('/JobPost',Employer,getRecruiterJobs)
+router.post("/apply/:job_id",jobSeeker, applyJob);
+router.get("/getApplications",jobSeeker,getUserApplications)
+router.post("/path", jobSeeker,createLearningPath)
+router.get('/path',jobSeeker,getLearningPath)
+router.delete('/path',jobSeeker,deleteLearningPath)
 export default router
