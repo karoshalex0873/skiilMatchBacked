@@ -4,7 +4,7 @@ import { Application } from "./Application ";
 
 @Entity()
 export class Jobs extends BaseEntity {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({name:'job_id'})
   job_id!: number;
 
   @Column()

@@ -4,10 +4,12 @@ import {
   CreateDateColumn,
   Entity,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { User } from "./User";
 import { Jobs } from "./Jobs";
+import { Interview } from "./Interview ";
 
 @Entity()
 export class Application extends BaseEntity {
@@ -21,6 +23,11 @@ export class Application extends BaseEntity {
   // Many applications application can be related to a sigle job
   @ManyToOne(() => Jobs, (job) => job.applications)
   job!: Jobs;
+
+
+  @OneToMany(() => Interview, (interview) => interview.application)
+  interviews!: Interview[];
+
 
   @Column({ default: "pending" })
   status!: "pending" | "reviewed" | "accepted" | "rejected";

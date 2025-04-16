@@ -4,6 +4,7 @@ import { User } from "../Entities/User";
 import { Role } from "../Entities/Role";
 import { Jobs } from "../Entities/Jobs";
 import { Application } from "../Entities/Application ";
+import { Interview } from "../Entities/Interview ";
 
 
 dotenv.config();
@@ -18,7 +19,7 @@ export const AppDataSource = new DataSource(
       url: process.env.DB_URL,
       synchronize: true,
       logging: false,
-      entities: [User,Role,Jobs,Application],
+      entities: [User,Role,Jobs,Application,Interview],
       ssl: true,
       extra: {
         ssl: {
@@ -38,7 +39,7 @@ export const AppDataSource = new DataSource(
       database: process.env.LOCAL_DB_NAME,
       synchronize: true,
       logging: false,
-      entities: [User,Role,Jobs,Application]
+      entities: [User,Role,Jobs,Application,Interview]
     }
 );
 
