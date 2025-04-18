@@ -1185,5 +1185,3 @@ export const getMyInterviewsController = asyncHandler(
     return res.status(200).json({ interviews: formattedInterviews });
   }
 );
-
-

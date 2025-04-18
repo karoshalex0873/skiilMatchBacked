@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import cors from 'cors'
 import jobsRoutes from './routes/jobsRoutes';
 import userRoutes from './routes/userRoutes';
+import systemRoutes from './routes/systemRoutes';
 
 
 
@@ -49,6 +50,9 @@ app.use('/api/v1/jobs', jobsRoutes)
 
 // user Routes
 app.use('/api/v1/user', userRoutes)
+
+// system routes
+app.use('/api/v1',systemRoutes)
 
 
 // database initilization

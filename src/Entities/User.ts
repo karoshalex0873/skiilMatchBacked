@@ -26,6 +26,9 @@ export class User extends BaseEntity {
   @Column()
   password!: string;
 
+  @Column({ default: true })
+  isActive!: boolean;
+
   @ManyToOne(() => Role, role => role.users)
   role!: Role;
 
@@ -62,7 +65,7 @@ export class User extends BaseEntity {
   @Column({ nullable: true })
   cv?: string;
 
-  @Column({ type: 'json', nullable: true }) 
+  @Column({ type: 'json', nullable: true })
   path?: any;
 
 
