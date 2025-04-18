@@ -29,6 +29,12 @@ export class User extends BaseEntity {
   @Column({ default: true })
   isActive!: boolean;
 
+  @Column({ default: false })
+  twoFactorEnabled!: boolean;
+
+  @Column({ nullable: true })
+  twoFactorSecret?: string;
+
   @ManyToOne(() => Role, role => role.users)
   role!: Role;
 

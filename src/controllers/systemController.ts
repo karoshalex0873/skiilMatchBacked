@@ -1,4 +1,5 @@
 import { Response, NextFunction } from "express";
+import { format } from "date-fns";
 import asyncHandler from "../midllewares/asyncHandler";
 import { UserRequest } from "../utils/types/Usertype";
 import os from 'os'
@@ -11,9 +12,10 @@ import { Application } from "../Entities/Application ";
 import { User } from "../Entities/User";
 import { Interview } from "../Entities/Interview ";
 import { HarmCategory, HarmBlockThreshold, GoogleGenerativeAI } from "@google/generative-ai";
-import { Between } from "typeorm";
+import { Between, MoreThan  } from "typeorm";
 import { console } from "inspector";
 import { title } from "process";
+import { SecurityLog } from "../Entities/SecurityLog";
 
 
 
@@ -138,7 +140,7 @@ export const systemAIAcurracy = asyncHandler(
       const BATCH_SIZE = 100
       let TP = 0, FP = 0, FN = 0, TN = 0;
 
-      
+
       interface DetailedResult {
         applicationId: string;
         userId: string;
@@ -307,7 +309,7 @@ async function fetchHistoricalAccuracyData(start: Date, end: Date) {
     };
 
   } catch (error) {
-    console.log("Failed to fetch historical data",{error})
+    console.log("Failed to fetch historical data", { error })
     return {
       labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
       values: [0.82, 0.85, 0.88, 0.90, 0.91, 0.924]
@@ -315,3 +317,80 @@ async function fetchHistoricalAccuracyData(start: Date, end: Date) {
   }
 }
 
+
+
+// the fucntion to check system security
+
+export const systemSecurity = asyncHandler(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+  try {
+    const securityEvents = await SecurityLog.find({
+      order: { timestamp: 'DESC' },
+      take: 5
+    });
+
+    console.log('Security Events:', securityEvents); // Add logging
+
+    const metrics = {
+      activeThreats: await SecurityLog.count({ where: { severity: 'high' } }),
+      securityScore: await calculateSecurityScore(),
+      updatesAvailable: 3,
+      dataEncryption: 100
+    };
+
+    console.log('Metrics:', metrics); // Log metrics
+
+    const threatData = await getThreatChartData();
+    console.log('Threat Data:', threatData); // Log chart data
+
+    res.json({
+      securityLevel: metrics.securityScore > 90 ? 'High' : metrics.securityScore > 70 ? 'Medium' : 'Low',
+      metrics, // Include metrics in response
+      threatChartData: threatData,
+      recentEvents: securityEvents.map(event => ({
+        type: event.type,
+        description: event.description,
+        severity: event.severity,
+        timestamp: event.timestamp
+      }))
+    });
+  } catch (error) {
+    console.error('Security Endpoint Error:', error);
+    res.status(500).json({ message: 'Error fetching security data' });
+  }
+    
+  }
+)
+
+// helpers functions of security metrics
+// 1 calculate Security Score
+const calculateSecurityScore = async () => {
+  const totalUsers = await User.count()
+  const usersWith2FA = await User.count({
+    where: { twoFactorEnabled: true }
+  })
+
+  const recentThreats = await SecurityLog.count({
+    where: {
+      timestamp: MoreThan(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
+    }
+  })
+  let score = 80;
+  score += (usersWith2FA / totalUsers) * 20;
+  score -= recentThreats * 0.5;
+  return Math.min(Math.max(score, 0), 100);
+}
+// 2. get Threat Chart Data
+const getThreatChartData = async () => {
+  const results = await SecurityLog.createQueryBuilder()
+    .select(`DATE_TRUNC('month', timestamp) as month`)
+    .addSelect('COUNT(*)', 'count')
+    .groupBy('month')
+    .orderBy('month')
+    .getRawMany();
+
+    return {
+      labels: results.map(r => format(new Date(r.month), 'MMM')),
+      data: results.map(r => r.count)
+    };
+}

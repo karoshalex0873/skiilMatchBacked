@@ -7,6 +7,7 @@ import { UserRequest } from "../utils/types/Usertype";
 import { generateToken } from "../utils/helpers/generateToken";
 import jwt from "jsonwebtoken";
 import dotenv from 'dotenv';
+import { SecurityLog } from "../Entities/SecurityLog";
 
 dotenv.config();
 
@@ -63,18 +64,46 @@ export const loginUser = asyncHandler(
     const { email, password } = req.body;
 
     // Find user by email
-    const user = await userDef.createQueryBuilder("user").leftJoinAndSelect("user.role", "role").where("user.email = :email", { email }).getOne()
+    const user = await userDef.createQueryBuilder("user")
+      .leftJoinAndSelect("user.role", "role")
+      .where("user.email = :email", { email })
+      .getOne();
 
+    // Log failed attempts for non-existent users
     if (!user) {
+      await SecurityLog.save(
+        SecurityLog.create({
+          type: 'login_attempt',
+          severity: 'medium',
+          description: `Failed login attempt for non-existent email: ${email}`
+        })
+      );
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
     // Compare passwords
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      res.status(401).json({ message: "Invalid credentials" });
-      return
+      await SecurityLog.save(
+        SecurityLog.create({
+          type: 'login_attempt',
+          severity: 'high',
+          description: `Failed login attempt for user ${user.email} (ID: ${user.user_id})`,
+          user: user // Associate with user account
+        })
+      );
+      return res.status(401).json({ message: "Invalid credentials" });
     }
+
+    // Log successful login
+    await SecurityLog.save(
+      SecurityLog.create({
+        type: 'login',
+        severity: 'low',
+        description: `Successful login for ${user.email}`,
+        user: user
+      })
+    );
 
     // Generate and set tokens
     generateToken(res, user.user_id.toString());
@@ -91,7 +120,6 @@ export const loginUser = asyncHandler(
     });
   }
 );
-
 //  logout function
 export const logoutUser = asyncHandler(
   async (req: UserRequest, res: Response, next: NextFunction) => {

@@ -5,31 +5,11 @@ import { Role } from "../Entities/Role";
 import { Jobs } from "../Entities/Jobs";
 import { Application } from "../Entities/Application ";
 import { Interview } from "../Entities/Interview ";
+import { SecurityLog } from "../Entities/SecurityLog";
 
 
 dotenv.config();
-
-const isProduction = process.env.NODE_ENV === 'production';
-
 export const AppDataSource = new DataSource(
-  isProduction ?
-    // Production configuration (Render)
-    {
-      type: "postgres",
-      url: process.env.DB_URL,
-      synchronize: true,
-      logging: false,
-      entities: [User,Role,Jobs,Application,Interview],
-      ssl: true,
-      extra: {
-        ssl: {
-          rejectUnauthorized: false,
-          require: true
-        }
-      }
-    }
-    :
-    // Local development configuration
     {
       type: "postgres",
       host: process.env.LOCAL_DB_HOST,
@@ -39,8 +19,7 @@ export const AppDataSource = new DataSource(
       database: process.env.LOCAL_DB_NAME,
       synchronize: true,
       logging: false,
-      entities: [User,Role,Jobs,Application,Interview]
+      entities: [User,Role,Jobs,Application,Interview,SecurityLog]
     }
 );
 
-// Initialize and test connection
