@@ -25,7 +25,7 @@ jobs:
 
       - name: Deploy to EC2
         run: |
-          ssh -i ~/.ssh/id_rsa ec2-user@13.61.182.189 << 'EOF'
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ec2-user@13.61.182.189 << 'EOF'
             sudo docker rm -f backend || true
             sudo docker rmi karoshalex0873/skillmatch_ai || true
             sudo docker pull karoshalex0873/skillmatch_ai
