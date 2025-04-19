@@ -1,5 +1,5 @@
 import { BaseEntity, Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { Application } from "./Application ";
+import { Application } from "./Application";
 import { User } from "./User";
 import { Jobs } from "./Jobs";
 

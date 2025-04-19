@@ -20,6 +20,7 @@ const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const cors_1 = __importDefault(require("cors"));
 const jobsRoutes_1 = __importDefault(require("./routes/jobsRoutes"));
 const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
+const systemRoutes_1 = __importDefault(require("./routes/systemRoutes"));
 dotenv_1.default.config();
 //instace of express
 const app = (0, express_1.default)();
@@ -32,13 +33,13 @@ app.use((0, cookie_parser_1.default)());
 app.use(express_1.default.urlencoded({ extended: true }));
 app.use((0, cors_1.default)({
     origin: ["http://localhost:4200", "http://dkskillmatch.s3-website.eu-north-1.amazonaws.com", "https://skill-matc-ai-frontend.vercel.app/"],
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Include OPTIONS
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"], // Include OPTIONS
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true
 }));
 // welcome message
 app.get('', (req, res) => {
-    res.send("Welcome to the server !");
+    res.send("Welcome to the server build with docker !");
 });
 // Authentication router
 app.use('/api/v1/auth', authRoutes_1.default);
@@ -46,6 +47,8 @@ app.use('/api/v1/auth', authRoutes_1.default);
 app.use('/api/v1/jobs', jobsRoutes_1.default);
 // user Routes
 app.use('/api/v1/user', userRoutes_1.default);
+// system routes
+app.use('/api/v1', systemRoutes_1.default);
 // database initilization
 data_source_1.AppDataSource.initialize()
     .then(() => __awaiter(void 0, void 0, void 0, function* () {

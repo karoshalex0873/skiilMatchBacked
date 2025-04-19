@@ -9,7 +9,7 @@ import {
 } from "typeorm";
 import { User } from "./User";
 import { Jobs } from "./Jobs";
-import { Interview } from "./Interview ";
+import { Interview } from "./Interview";
 
 @Entity()
 export class Application extends BaseEntity {

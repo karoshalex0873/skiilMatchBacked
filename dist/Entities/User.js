@@ -13,7 +13,7 @@ exports.User = void 0;
 const typeorm_1 = require("typeorm");
 const Role_1 = require("./Role");
 const Jobs_1 = require("./Jobs");
-const Application_1 = require("./Application ");
+const Application_1 = require("./Application");
 let User = class User extends typeorm_1.BaseEntity {
 };
 exports.User = User;
@@ -33,6 +33,18 @@ __decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", String)
 ], User.prototype, "password", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: true }),
+    __metadata("design:type", Boolean)
+], User.prototype, "isActive", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: false }),
+    __metadata("design:type", Boolean)
+], User.prototype, "twoFactorEnabled", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], User.prototype, "twoFactorSecret", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => Role_1.Role, role => role.users),
     __metadata("design:type", Role_1.Role)

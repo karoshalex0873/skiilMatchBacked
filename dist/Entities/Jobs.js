@@ -12,12 +12,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Jobs = void 0;
 const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
-const Application_1 = require("./Application ");
+const Application_1 = require("./Application");
 let Jobs = class Jobs extends typeorm_1.BaseEntity {
 };
 exports.Jobs = Jobs;
 __decorate([
-    (0, typeorm_1.PrimaryGeneratedColumn)(),
+    (0, typeorm_1.PrimaryGeneratedColumn)({ name: 'job_id' }),
     __metadata("design:type", Number)
 ], Jobs.prototype, "job_id", void 0);
 __decorate([

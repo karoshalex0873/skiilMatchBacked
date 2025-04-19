@@ -1,6 +1,6 @@
 import { BaseEntity, Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { User } from "./User";
-import { Application } from "./Application ";
+import { Application } from "./Application";
 
 @Entity()
 export class Jobs extends BaseEntity {

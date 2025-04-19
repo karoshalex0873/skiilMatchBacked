@@ -13,7 +13,7 @@ exports.Application = void 0;
 const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
 const Jobs_1 = require("./Jobs");
-const Interview_1 = require("./Interview ");
+const Interview_1 = require("./Interview");
 let Application = class Application extends typeorm_1.BaseEntity {
 };
 exports.Application = Application;

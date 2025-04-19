@@ -6,9 +6,9 @@ import { Jobs } from "../Entities/Jobs";
 import { User } from "../Entities/User";
 import { GoogleGenerativeAI, } from '@google/generative-ai'
 import { JobRequest } from "../utils/types/JobsTypes";
-import { Application } from "../Entities/Application ";
+import { Application } from "../Entities/Application";
 import { Between, Equal, ILike, In, MoreThan } from "typeorm";
-import { Interview } from "../Entities/Interview ";
+import { Interview } from "../Entities/Interview";
 
 // job repository defincation
 const jobDef = AppDataSource.getRepository(Jobs)

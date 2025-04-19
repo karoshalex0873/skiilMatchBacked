@@ -4,8 +4,8 @@ import { User } from "../Entities/User";
 import asyncHandler from "../midllewares/asyncHandler";
 import { UserRequest } from "../utils/types/Usertype";
 import { NextFunction, Response, response } from "express";
-import { Application } from "../Entities/Application ";
-import { Interview } from "../Entities/Interview ";
+import { Application } from "../Entities/Application";
+import { Interview } from "../Entities/Interview";
 import { Jobs } from "../Entities/Jobs";
 import { Role } from "../Entities/Role";
 import { paginate } from 'nestjs-typeorm-paginate';
@@ -17,7 +17,7 @@ const userDef = AppDataSource.getRepository(User)
 const applyDef = AppDataSource.getRepository(Application)
 const InterDef = AppDataSource.getRepository(Interview)
 const jobDef = AppDataSource.getRepository(Jobs)
-const roleDef= AppDataSource.getRepository(Role)
+const roleDef = AppDataSource.getRepository(Role)
 
 
 export const userInfo = asyncHandler(
@@ -278,12 +278,12 @@ export const recruiterAnalytics = asyncHandler(
 
 export const getUserManagementData = asyncHandler(
   async (req: UserRequest, res: Response) => {
-    
+
     const [totalUsers, activeUsers, newSignups, adminUsers] = await Promise.all([
       userDef.count(),
-      userDef.count({ where: { isActive: true }}),
-      userDef.count({ 
-        where: { 
+      userDef.count({ where: { isActive: true } }),
+      userDef.count({
+        where: {
           createdAt: Between(
             new Date(new Date().setDate(new Date().getDate() - 30)),
             new Date()
@@ -314,14 +314,14 @@ export const getUserManagementData = asyncHandler(
 
     // 4. User List Pagination
     const { page = 1, limit = 10, search = '', role = '' } = req.query;
-    
+
     const query = userDef.createQueryBuilder('user')
       .leftJoinAndSelect('user.role', 'role')
       .orderBy('user.createdAt', 'DESC');
 
     if (search) {
-      query.where('(user.name ILIKE :search OR user.email ILIKE :search)', { 
-        search: `%${search}%` 
+      query.where('(user.name ILIKE :search OR user.email ILIKE :search)', {
+        search: `%${search}%`
       });
     }
 
@@ -344,7 +344,7 @@ export const getUserManagementData = asyncHandler(
       },
       charts: {
         userGrowth: userGrowth.map(g => ({
-          month: g.month.toISOString().slice(0,7),
+          month: g.month.toISOString().slice(0, 7),
           count: parseInt(g.count)
         })),
         rolesDistribution: rolesDistribution.map(r => ({

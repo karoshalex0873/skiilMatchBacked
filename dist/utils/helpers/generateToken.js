@@ -17,18 +17,17 @@ const generateToken = (res, userId) => {
     try {
         const accessToken = jsonwebtoken_1.default.sign({ userId }, jwt_secret, { expiresIn: '30m' });
         const refreshToken = jsonwebtoken_1.default.sign({ userId }, refreshSecret, { expiresIn: '30d' });
-        // access token as HTTPonly secure and samSite=strict
         res.cookie("access_token", accessToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV !== 'development',
-            sameSite: process.env.NODE_ENV !== 'development' ? "none" : "lax",
-            maxAge: 90 * 60 * 1000,
+            secure: true,
+            sameSite: "strict",
+            maxAge: 90 * 60 * 1000, // 90 min
         });
-        // Set refresh token as HTTPOnly
+        // Set refresh token cookie with same strict rules
         res.cookie("refresh_token", refreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV !== "development",
-            sameSite: process.env.NODE_ENV !== "development" ? "none" : "lax",
+            secure: true,
+            sameSite: "strict",
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
         });
         return { accessToken, refreshToken };

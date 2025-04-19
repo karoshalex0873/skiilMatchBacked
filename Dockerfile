@@ -12,7 +12,7 @@ RUN pnpm install
 
 COPY . /app
 
-EXPOSE 4000
+EXPOSE 80
 
 CMD [ "pnpm","start" ]
 
@@ -21,3 +21,7 @@ CMD [ "pnpm","start" ]
 # 1. docker build -t t2gnode .
 
 # 2. docker run -p(for port) --name <name_container> -d(for non blocking) --rm t2gnode
+
+# on aws  
+# 1.  docker build -t karoshalex0873/skillmatch_ai .
+# 2    docker push karoshalex0873/skillmatch_ai

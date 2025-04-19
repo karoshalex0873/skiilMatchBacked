@@ -19,6 +19,7 @@ const User_1 = require("../Entities/User");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const generateToken_1 = require("../utils/helpers/generateToken");
 const dotenv_1 = __importDefault(require("dotenv"));
+const SecurityLog_1 = require("../Entities/SecurityLog");
 dotenv_1.default.config();
 // User repository
 const userDef = data_source_1.AppDataSource.getRepository(User_1.User);
@@ -55,16 +56,37 @@ exports.registerUser = (0, asyncHandler_1.default)((req, res, next) => __awaiter
 exports.loginUser = (0, asyncHandler_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { email, password } = req.body;
     // Find user by email
-    const user = yield userDef.createQueryBuilder("user").leftJoinAndSelect("user.role", "role").where("user.email = :email", { email }).getOne();
+    const user = yield userDef.createQueryBuilder("user")
+        .leftJoinAndSelect("user.role", "role")
+        .where("user.email = :email", { email })
+        .getOne();
+    // Log failed attempts for non-existent users
     if (!user) {
+        yield SecurityLog_1.SecurityLog.save(SecurityLog_1.SecurityLog.create({
+            type: 'login_attempt',
+            severity: 'medium',
+            description: `Failed login attempt for non-existent email: ${email}`
+        }));
         return res.status(401).json({ message: "Invalid credentials" });
     }
     // Compare passwords
     const isMatch = yield bcryptjs_1.default.compare(password, user.password);
     if (!isMatch) {
-        res.status(401).json({ message: "Invalid credentials" });
-        return;
+        yield SecurityLog_1.SecurityLog.save(SecurityLog_1.SecurityLog.create({
+            type: 'login_attempt',
+            severity: 'high',
+            description: `Failed login attempt for user ${user.email} (ID: ${user.user_id})`,
+            user: user // Associate with user account
+        }));
+        return res.status(401).json({ message: "Invalid credentials" });
     }
+    // Log successful login
+    yield SecurityLog_1.SecurityLog.save(SecurityLog_1.SecurityLog.create({
+        type: 'login',
+        severity: 'low',
+        description: `Successful login for ${user.email}`,
+        user: user
+    }));
     // Generate and set tokens
     (0, generateToken_1.generateToken)(res, user.user_id.toString());
     // Send response
