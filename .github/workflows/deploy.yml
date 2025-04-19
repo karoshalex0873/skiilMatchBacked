@@ -25,9 +25,20 @@ jobs:
 
       - name: Deploy to EC2
         run: |
+          run: |
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ec2-user@13.61.182.189 << 'EOF'
+            echo "🧹 Stopping and removing existing container..."
             sudo docker rm -f backend || true
+
+            echo "🗑 Removing old image..."
             sudo docker rmi karoshalex0873/skillmatch_ai || true
+
+            echo "📦 Pulling latest image..."
             sudo docker pull karoshalex0873/skillmatch_ai
+
+            echo "🚀 Starting new container..."
             sudo docker run -d -p 80:80 --name backend karoshalex0873/skillmatch_ai
+
+            echo "✅ Deployment done!"
+            sudo docker ps
           EOF
