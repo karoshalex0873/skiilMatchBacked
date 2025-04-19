@@ -12,6 +12,9 @@ RUN pnpm install
 
 COPY . /app
 
+# Build TypeScript files
+RUN pnpm build
+
 EXPOSE 80
 
 CMD [ "pnpm","start" ]

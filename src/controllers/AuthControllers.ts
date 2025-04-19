@@ -106,11 +106,20 @@ export const loginUser = asyncHandler(
     );
 
     // Generate and set tokens
-    generateToken(res, user.user_id.toString());
+    // generateToken(res, user.user_id.toString());
+
+    const tokens = generateToken(res, user.user_id.toString());
+
+    if (!tokens) {
+      return res.status(500).json({ message: "Token generation failed" });
+    }
+    const { accessToken, refreshToken } = tokens;
 
     // Send response
     res.status(200).json({
       message: "Login successful",
+      accessToken,
+      refreshToken,
       user: {
         id: user.user_id,
         name: user.name,
