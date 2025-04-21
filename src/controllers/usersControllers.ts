@@ -9,6 +9,7 @@ import { Interview } from "../Entities/Interview";
 import { Jobs } from "../Entities/Jobs";
 import { Role } from "../Entities/Role";
 import { paginate } from 'nestjs-typeorm-paginate';
+import { uploadToDrive } from "../utils/filesytem/GoogleDrive";
 
 
 
@@ -132,6 +133,8 @@ export const updateUser = asyncHandler(
         experience
       } = req.body;
 
+     
+
       // Update fields if provided
       if (name) existingUser.name = name;
       if (avatar) existingUser.avatar = avatar;
@@ -142,7 +145,24 @@ export const updateUser = asyncHandler(
       if (dob) existingUser.dob = dob;
       if (summary) existingUser.summary = summary
       if (gender) existingUser.gender = gender;
-      if (experience) existingUser.experience = experience
+      if (experience) existingUser.experience = 
+      experience
+
+      // handle cv file upload
+      if (req.file) {
+        try {
+          const driveResponse = await uploadToDrive(req.file);
+          existingUser.cv = driveResponse.url ?? undefined;
+          existingUser.cvFileId = driveResponse.fileId ?? undefined;
+        } catch (error) {
+          console.error('Drive upload error:', error);
+          return res.status(500).json({
+            message: 'CV upload failed',
+            error: (error as any).message,
+            details: (error as any).response?.data
+          });
+        }
+      }
 
 
       // Save updated user
@@ -150,7 +170,6 @@ export const updateUser = asyncHandler(
 
       // Calculate profile completion
       const profileCompletion = calculateProfileCompletion(updatedUser);
-
       // Response
       res.status(200).json({
         success: true,

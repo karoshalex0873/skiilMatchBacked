@@ -12,6 +12,12 @@ export interface User{
   skills?:string[]
   phone?:string;
   bio?:string;
+  experience?:string;
+  summary?:string;
+  isActive?:boolean;
+  isVerified?:boolean;
+  twoFactorEnabled?:boolean;
+  cv?:string;
   location?:string;
   dob?:string;
   gender?:string

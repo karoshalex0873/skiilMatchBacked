@@ -12,12 +12,11 @@ const userInfo = AppDataSource.getRepository(User)
 export const protect = asyncHandler(async (req: UserRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    res.status(401).json({ message: "⚠ Access denied: No token provided" });
-    return
+  if (!authHeader || !authHeader.startsWith("Bearer")) {
+    return res.status(401).json({ message: "⚠ Access denied: No token provided" });
   }
 
-  const token = authHeader.split(" ")[1]; // Extract token from "Bearer <token>"
+  const token = authHeader.split(" ")[1];
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
@@ -28,8 +27,7 @@ export const protect = asyncHandler(async (req: UserRequest, res: Response, next
     });
 
     if (!userResult) {
-      res.status(401).json({ message: "⚠ Denied: User not Found" });
-      return
+      return res.status(401).json({ message: "⚠ Denied: User not Found" });
     }
 
     req.user = {
@@ -40,13 +38,12 @@ export const protect = asyncHandler(async (req: UserRequest, res: Response, next
       avatar: userResult.avatar,
       createdAt: userResult.createdAt,
       updatedAt: userResult.updatedAt,
+      cv: userResult.cv,
     };
 
     next();
-  } catch (error) {
-    console.error("Token verification error:", error);
-    return res.status(401).json({ message: "Unauthorized: Invalid token" });
+  } catch (error: any) {
+    console.error("Token verification error:", error.message);
+    return res.status(401).json({ message: "Unauthorized: Invalid or malformed token" });
   }
 });
-
-

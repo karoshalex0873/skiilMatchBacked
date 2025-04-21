@@ -177,6 +177,11 @@ export const applyJob = asyncHandler(
       throw new Error("Job not found");
     }
 
+    // prevent the user to apply for a job if the use doesn't have a cv
+    if (!user.cv) {
+      res.status(400).json({ message: "Please upload your CV before applying" })
+      return
+    }
     const existingApplication = await applyDef.findOne({
       where: {
         job: { job_id: jobId },

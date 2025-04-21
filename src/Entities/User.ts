@@ -11,6 +11,7 @@ import {
 import { Role } from "./Role";
 import { Jobs } from "./Jobs";
 import { Application } from "./Application";
+import { Otp } from "./Otp";
 
 
 @Entity()
@@ -31,6 +32,9 @@ export class User extends BaseEntity {
   isActive!: boolean;
 
   @Column({ default: false })
+  isVerified!: boolean;
+
+  @Column({ default: false })
   twoFactorEnabled!: boolean;
 
   @Column({ nullable: true })
@@ -38,6 +42,11 @@ export class User extends BaseEntity {
 
   @ManyToOne(() => Role, role => role.users)
   role!: Role;
+
+  @OneToMany(() => Otp, (otp) => otp.user)
+  otps!: Otp[]
+
+
 
   // Optional fields
   @Column({ nullable: true })
@@ -71,6 +80,9 @@ export class User extends BaseEntity {
   // CV file path or URL
   @Column({ nullable: true })
   cv?: string;
+
+  @Column({ nullable: true })
+  cvFileId?: string;
 
   @Column({ type: 'json', nullable: true })
   path?: any;

@@ -6,6 +6,7 @@ import { Jobs } from "../Entities/Jobs";
 import { SecurityLog } from "../Entities/SecurityLog";
 import { Application } from "../Entities/Application";
 import { Interview } from "../Entities/Interview";
+import { Otp } from "../Entities/Otp";
 
 
 dotenv.config();
@@ -22,7 +23,7 @@ export const AppDataSource = new DataSource(
     ssl: {
       rejectUnauthorized: false
     },
-    entities: [User, Role, Jobs, Application, Interview, SecurityLog]
+    entities: [User, Role, Jobs, Application, Interview, SecurityLog,Otp]
   }
 );
 

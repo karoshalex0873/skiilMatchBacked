@@ -7,6 +7,7 @@ import cors from 'cors'
 import jobsRoutes from './routes/jobsRoutes';
 import userRoutes from './routes/userRoutes';
 import systemRoutes from './routes/systemRoutes';
+import path from 'path';
 
 
 
@@ -24,6 +25,7 @@ const PORT = process.env.PORT
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
+
 
 
 app.use(cors({
@@ -53,6 +55,7 @@ app.use('/api/v1/user', userRoutes)
 
 // system routes
 app.use('/api/v1',systemRoutes)
+
 
 
 // database initilization
