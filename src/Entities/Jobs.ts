@@ -1,6 +1,7 @@
 import { BaseEntity, Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { User } from "./User";
 import { Application } from "./Application";
+import { Interview } from "./Interview";
 
 @Entity()
 export class Jobs extends BaseEntity {
@@ -48,5 +49,8 @@ export class Jobs extends BaseEntity {
   // One Job can have many users
   @OneToMany(() => Application, (application) => application.job)
   applications!: Application[];
+
+  @OneToMany(() => Interview, (interview) => interview.job)
+  interviews!: Interview[];
 
 }

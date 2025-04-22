@@ -25,4 +25,5 @@ export interface User{
 
 export interface UserRequest extends Request {
   user?: User;
+  session?: Record<string, any>; 
 }

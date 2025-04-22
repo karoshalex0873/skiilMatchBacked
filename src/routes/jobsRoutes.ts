@@ -18,7 +18,7 @@ router.get('/allApplications', protect,Employer, getAllApplicationsForMyJobs)
 router.delete('/applications/:application_id', protect, Employer,deleteApplication)
 
 
-router.post('/ask',protect,Employer,createQueryAI)
+router.post('/ask',protect,createQueryAI)
 
 
 router.post('/createInterview',protect,scheduledInterview)

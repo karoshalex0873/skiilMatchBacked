@@ -12,6 +12,7 @@ import { SecurityLog } from "../Entities/SecurityLog";
 import { v4 as uuidv4 } from 'uuid';
 import { sendOTPEmail } from "../utils/otp/sendOtpEmail";
 import { OtpService } from "../utils/otp/otpUtils";
+import { Otp } from "../Entities/Otp";
 
 
 dotenv.config();
@@ -236,3 +237,78 @@ export const resendOtp = asyncHandler(async (req:UserRequest, res:Response) => {
   }
 });
 
+
+export const deleteUser = asyncHandler(async (req: UserRequest, res: Response) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    return res.status(400).json({ message: "User ID is required" });
+  }
+
+  const user = await userDef.findOne({ where: { user_id: Number(userId) } });
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+    
+  }
+
+  
+
+  // dedlet on the security log due foreign key constraint recod
+  await Otp.delete({ user: { user_id: Number(userId) } });
+  await SecurityLog.delete({ user: { user_id: Number(userId) } });
+
+  await userDef.delete(user.user_id);
+
+  res.json({ message: "User deleted successfully" });
+})
+
+export const updateUser = asyncHandler(async (req: UserRequest, res: Response) => {
+  const { userId } = req.params;
+  const { name, email, password, role } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ message: "User ID is required" });
+  }
+
+  const user = await userDef.findOne({ where: { user_id: Number(userId) } });
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  // Update user properties
+  if (name) user.name = name;
+  if (email) user.email = email;
+  if (password) user.password = await bcrypt.hash(password, await bcrypt.genSalt(10));
+  if (role) user.role = role; // Assuming role is an object or ID
+
+  await userDef.save(user);
+
+  res.json({ message: "User updated successfully", user });
+})
+
+export const createUser = asyncHandler(async (req: UserRequest, res: Response) => {
+  const { name, email, password, role } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required' });
+  }
+
+  const existing = await userDef.findOne({ where: { email } });
+  if (existing) {
+    return res.status(409).json({ message: 'User already exists' });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, await bcrypt.genSalt(10));
+  const newUser = userDef.create({
+    name,
+    email,
+    password: hashedPassword,
+    role,
+    isActive: true,
+  });
+
+  await userDef.save(newUser);
+  res.status(201).json({ message: 'User created successfully', user: newUser });
+});

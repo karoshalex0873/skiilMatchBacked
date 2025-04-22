@@ -7,8 +7,9 @@ import { User } from "../Entities/User";
 import { GoogleGenerativeAI, } from '@google/generative-ai'
 import { JobRequest } from "../utils/types/JobsTypes";
 import { Application } from "../Entities/Application";
-import { Between, Equal, ILike, In, MoreThan } from "typeorm";
+import { Between, Equal, ILike, In, MoreThan, MoreThanOrEqual } from "typeorm";
 import { Interview } from "../Entities/Interview";
+import { fetchCVTextFromDrive } from "../utils/filesytem/cvtxt";
 
 // job repository defincation
 const jobDef = AppDataSource.getRepository(Jobs)
@@ -39,12 +40,19 @@ export const getJobs = asyncHandler(
       return
     }
 
+    if (!user.cv) {
+      res.status(400).json({ success: false, message: 'User CV is not available' });
+      return;
+    }
+
+    const cvText = await fetchCVTextFromDrive(user.cv);
+
     const userProfile = {
       name: user.name,
       bio: user.bio,
       skills: user.skills,
       experience: user.experience,
-      location: user.location
+      cvText
     }
 
     // 2. Get jobs from DB
@@ -60,7 +68,7 @@ export const getJobs = asyncHandler(
       experienceLevel: job.experienceLevel,
       salaryRange: job.salaryRange,
       type: job.type,
-      postedDate: job.postedDate
+      postedDate: job.postedDate,
     }));
 
     const prompt = `
@@ -69,16 +77,16 @@ export const getJobs = asyncHandler(
     User Profile Analysis Factors:
     1. Skills match
     2. Experience level alignment
-    3. Location compatibility
-    4. Bio/keyword relevance
-    5. Job summary/content matching
+    3. Job summary/content matching
+    4. Cv relevance to job requirements
+
     
     Job Analysis Factors:
     - Required skills vs user skills
     - Experience requirements vs user experience
-    - Location preferences
     - Job summary/content relevance to user bio
     - Role-specific keywords
+    - Cv relevance to job requirements
     
     User Profile:
     ${JSON.stringify(userProfile, null, 2)}
@@ -677,317 +685,384 @@ interface ConversationContext {
   previousQuestions?: string[];
 }
 
-// 3. 
 export const createQueryAI = asyncHandler(
   async (req: UserRequest, res: Response, next: NextFunction) => {
     const userId = req.user?.user_id;
     const { question, context } = req.body;
 
-    if (!userId || !question) {
+    // Block 1: Enhanced Validation
+    if (!userId || !question?.trim()) {
       return res.status(400).json({
-        type: 'message',
-        state: 'ERROR',
-        content: "Hi there! 👋 I need both your question and user ID to help properly.",
-        suggestions: ['Re-enter credentials', 'Contact support']
+        type: 'error',
+        code: 'MISSING_DATA',
+        content: "🔒 Authentication and question are required",
+        suggestions: ['Refresh session', 'Contact support']
       });
     }
 
-    const previousMessages = context?.history?.slice(-3) || [];
+    // Block 2: Strict Input Sanitization
+    const harmfulPatterns = [
+      /delete/gi, /drop/gi, /update/gi,
+      /nudity/gi, /violence/gi, /script/gi
+    ];
+
+    if (harmfulPatterns.some(pattern => pattern.test(question))) {
+      return res.status(403).json({
+        type: 'error',
+        code: 'CONTENT_BLOCKED',
+        content: "🚫 Restricted content detected",
+        suggestions: ['Reformulate query', 'Contact admin']
+      });
+    }
+
+    // Block 3: Context Management with Validation
+    const maxHistoryLength = 5;
+    const conversationHistory = (context?.history || [])
+      .slice(-maxHistoryLength)
+      .filter((m: any) => typeof m.content === 'string');
+
+    const safeContext = {
+      user: userId,
+      lastInteraction: new Date().toISOString(),
+      queryCount: Math.min((context?.queryCount || 0) + 1, 1000)
+    };
+
+    // Block 4: Enhanced Safety Prompt
+    const safetyPrompt = `
+    STRICT RESPONSE FORMAT REQUIRED:
+    RULES:
+      1. NO suggestions when returning data
+      2. ONLY include dataQuery when needed
+      3. MAX 3 suggestions ONLY for message-type responses
+    {
+      "type": "message"|"data",
+      "content": "text response",
+      "suggestions": ["array", "of", "strings"] when no data is found,
+      "dataQuery": { 
+        // Optional SAFE read-only query
+        "filters": {
+          "status?: "pending"|"accepted"|"rejected",
+          "jobTitle?: string",
+          "dateRange?: "last_7_days"|"this_month"|"all"
+        }
+      }
+    }
+
+    RULES:
+    1. NO markdown or formatting
+    2. ONLY JSON format
+    3. NO explanatory text
+    4. MAX 3 suggestions
+
+    When responding with data queries, include a queryType:
+      - Use 'posted_jobs' for job post inquiries
+      - Use 'applications' for applicant tracking
+      - Use 'interviews' for interview scheduling
+
+      Example:
+      {
+        "type": "data",
+        "queryType": "interviews",
+        "content": "Showing upcoming interviews",
+        "filters": {
+          "timeline": "upcoming"
+        }
+      }
+
+
+    HISTORY: ${JSON.stringify(conversationHistory)}
+    QUERY: "${question.replace(/"/g, '\\"')}"
+    `;
+
     try {
-      interface PromptFilters {
-        jobTitle?: string | null;
-        status?: 'accepted' | 'pending' | 'rejected' | null;
-        dateRange?: 'last_7_days' | 'this_month' | 'all' | null;
-        countOnly?: boolean;
-      }
+      // Block 5: Robust AI Interaction
+      const aiResponse = await generateSafeAIResponse(safetyPrompt);
 
-      interface PromptContext {
-        previousFilters?: Record<string, any>;
-        missingFields?: string[];
-      }
-
-      interface PromptResponse {
-        type: 'message' | 'query';
-        state: 'GREETING' | 'CLARIFY' | 'ACTION' | 'CHITCHAT' | 'ERROR';
-        content: string;
-        suggestions: string[];
-        filters?: PromptFilters;
-        context?: PromptContext;
-      }
-
-      interface PreviousMessage {
-        role: string;
-        content: string;
-      }
-
-      const prompt: string = `
-        You're TalentFlow Assistant with these personality traits:
-        - Friendly but professional
-        - Enthusiastic about recruitment
-        - Uses occasional emojis (max 1 per message)
-        - Shows curiosity about user needs
-
-        1. Conversation Flow:
-        - Maintain natural dialogue with 1-2 sentences
-        - Use emojis sparingly (max 1 per message)
-        - Acknowledge previous context: ${JSON.stringify(context || {})}
-        - For queries, ALWAYS return both filters and natural language summary
-
-
-        Examples of natural responses:
-        User: "Hi what are you doing?"
-        Response: {
-          "type": "message",
-          "state": "CHITCHAT", 
-          "content": "Just organizing candidate data! 📊 How can I assist you today?",
-          "suggestions": ["Show recent apps", "Search by role"]
-        }
-
-        2. Response Format (STRICT JSON):
-        {
-          "type": "message"|"query",
-          "state": "${Object.values(['GREETING', 'CLARIFY', 'ACTION', 'CHITCHAT', 'ERROR']).join('|')}",
-          "content": "Response text",
-          "suggestions": ["Array", "Of", "Next steps"],
-          "filters": {
-        "jobTitle": "string|null",
-        "status": "accepted|pending|rejected|null",
-        "dateRange": "last_7_days|this_month|all|null",
-        "countOnly": "boolean"
-          },
-          "context": {
-        "previousFilters": "object",
-        "missingFields": "array"
-          }
-        }
-
-        3. Examples:
-        User: "Hi! What's new?"
-        Response: {
-          "type": "message",
-          "state": "GREETING",
-          "content": "Hello! 🌟 I've got updates on 5 new applications. How can I assist?",
-          "suggestions": ["Show recent", "Filter by role"]
-        }
-
-        User: "Show me rejected designers"
-        Response: {
-          "type": "query",
-          "state": "ACTION",
-          "content": "Showing rejected designer applications...",
-          "filters": {
-        "jobTitle": "designer",
-        "status": "rejected",
-        "dateRange": "all",
-        "countOnly": false
-          },
-          "suggestions": ["Analyze reasons", "Compare with accepted"]
-        }
-          Conversation History:
-    ${previousMessages.map((m: PreviousMessage) => `${m.role}: ${m.content}`).join('\n')}
-          
-
-        Current query: "${question}"
-      `;
-
-      // Get AI response
-      const aiResult = await model.generateContent(prompt);
-      const rawResponse = aiResult.response.text();
-
-      // Clean and parse response
-      const sanitizedResponse = rawResponse
-        .replace(/```json/g, '')
-        .replace(/```/g, '')
-        .replace(/(\bNaN\b|\bInfinity\b)/g, 'null')
-        .trim();
-
-      let aiResponse: any;
-      try {
-        aiResponse = JSON.parse(sanitizedResponse);
-      } catch (error) {
-        console.error('AI Response Parse Error:', error);
+      // Block 6: Strict Response Validation
+      if (!validateAIResponse(aiResponse)) {
         return res.status(500).json({
-          type: 'message',
-          state: 'ERROR',
-          content: "Hmm, I'm having trouble processing that. Could you rephrase? 🤔",
-          suggestions: ['Try different wording', 'Start over']
+          type: 'error',
+          code: 'AI_VALIDATION_FAILED',
+          content: "🛡️ Response validation error",
+          suggestions: ['Try again', 'Report issue']
         });
       }
 
-      // Validate response structure
-      if (!aiResponse.type || !aiResponse.state) {
-        return res.status(500).json({
-          type: 'message',
-          state: 'ERROR',
-          content: "My circuits are a bit tangled. Let's try that again!",
-          suggestions: ['Restart conversation', 'Ask something else']
+      // Block 7: Safe Data Handling
+      let responseData: any = [];
+      if (aiResponse.dataQuery) {
+        responseData = await executeSafeQuery({
+          ...aiResponse.dataQuery,
+          user: userId
         });
+
+        // Handle empty dataset scenario
+        if (responseData.length === 0) {
+          aiResponse.type = 'message';
+          aiResponse.content = "📭 No matching records found";
+          aiResponse.suggestions = [
+            'Broaden search filters',
+            'Check different time range',
+            'Verify data sources'
+          ];
+          delete aiResponse.dataQuery;
+        }
       }
 
-      // Handle conversation states
-      switch (aiResponse.state) {
-        case 'GREETING':
-          return handleGreeting(res, aiResponse);
+      // Block 8: Final Response with Sanitization
+      // Block 8: Final Response with Sanitization
+      const finalResponse = {
+        ...aiResponse,
+        context: safeContext,
+        // Only include data field for successful queries
+        ...(aiResponse.type === 'data' && { data: responseData })
+      };
 
-        case 'ACTION':
-          return handleDatabaseAction(req, res, aiResponse);
-
-        case 'CLARIFY':
-          return handleClarification(res, aiResponse);
-
-        case 'CHITCHAT':
-          return handleChitchat(res, aiResponse);
-
-        default:
-          return handleFallback(res);
+      // Final validation check
+      if (finalResponse.type === 'data' && !finalResponse.data?.length) {
+        finalResponse.type = 'message';
+        finalResponse.content = "🔎 No results found for your query";
+        finalResponse.suggestions = ['Try different filters', 'Check spelling'];
+        delete finalResponse.data;
       }
+
+      return res.json(finalResponse);
 
     } catch (error) {
-      console.error('AI Conversation Error:', error);
+      // Block 9: Enhanced Error Handling
+      console.error(`AI Error [${userId}]:`, error);
       return res.status(500).json({
-        type: 'message',
-        state: 'ERROR',
-        content: "Whoops! Something went wrong on my end. 🛠️",
-        suggestions: ['Try again later', 'Contact human support']
+        type: 'error',
+        code: 'SYSTEM_ERROR',
+        content: "🌐 Service temporarily unavailable",
+        suggestions: ['Retry in 2 minutes', 'Check status']
       });
     }
   }
 );
 
-// Conversation Handlers
-const handleGreeting = (res: Response, response: any) => {
-  return res.status(200).json({
-    ...response,
-    suggestions: response.suggestions || ['View statistics', 'Search applications']
-  });
-};
-
-const handleDatabaseAction = async (
-  req: UserRequest,
-  res: Response,
-  response: any
-) => {
+// Enhanced Helper Functions
+async function generateSafeAIResponse(prompt: string) {
+  let rawText = ''; // Declare rawText outside the try block
   try {
-    const userId = req.user!.user_id;
-    const { filters } = response;
+    const result = await model.generateContent(prompt);
+    rawText = await result.response.text();
 
-    // Get recruiter's job IDs
-    const recruiterJobs = await jobDef.find({
-      where: { user: { user_id: userId } },
-      select: ['job_id'],
-    });
+    // Advanced sanitization
+    const sanitizedText = rawText
+      .replace(/(```json|```)/gi, '')
+      .replace(/[\x00-\x1F]/g, '')
+      .trim();
 
-    if (!recruiterJobs.length) {
-      return res.status(200).json({
-        type: 'message',
-        state: 'ACTION',
-        content: "No job listings found. Create some first!",
-        suggestions: ['Create new job', 'View tutorial']
-      });
+    // Validate JSON structure before parsing
+    if (!sanitizedText.startsWith('{')) {
+      throw new Error('Invalid JSON format');
     }
 
-    const jobIds = recruiterJobs.map(job => job.job_id);
+    const parsed = JSON.parse(sanitizedText);
+    return parsed;
 
-    // Build query conditions
-    const where: any = {
-      job: { job_id: In(jobIds) }
-    };
+  } catch (error) {
+    console.error('AI Response Error:', error, 'Raw:', rawText);
+    throw new Error('AI response processing failed');
+  }
+}
 
-    if (filters.status) where.status = filters.status.toLowerCase();
+function validateAIResponse(response: any) {
 
-    if (filters.jobTitle) {
-      const job = await jobDef.findOne({
-        where: {
-          title: ILike(`%${filters.jobTitle}%`),
-          user: { user_id: userId }
-        },
-      });
-      if (job) where.job.id = job.job_id;
-    }
+  const validSuggestions = response.type === 'data'
+    ? !response.suggestions?.length
+    : true;
 
-    // Date filtering
-    if (filters.dateRange && filters.dateRange !== 'all') {
-      const now = new Date();
 
-      switch (filters.dateRange) {
+  const isValidType = ['message', 'data'].includes(response?.type);
+  const isValidContent = typeof response?.content === 'string';
+  const validStatuses = ['pending', 'accepted', 'rejected'];
+
+  const validFilters = !response.dataQuery?.filters || (
+    (!response.dataQuery.filters.status || validStatuses.includes(response.dataQuery.filters.status)) &&
+    (typeof response.dataQuery.filters.jobTitle === 'string' || !response.dataQuery.filters.jobTitle) &&
+    (!response.dataQuery.filters.dateRange || ['last_7_days', 'this_month', 'all'].includes(response.dataQuery.filters.dateRange))
+  );
+
+  return isValidType && isValidContent && validFilters && validSuggestions;
+}
+
+async function executeSafeQuery(query: any) {
+  // Validate query structure
+  if (!query.filters || typeof query.filters !== 'object') {
+    return [];
+  }
+
+  // New: Handle different query types
+  switch (query.queryType) {
+    case 'posted_jobs':
+      return handleJobPostsQuery(query);
+    case 'interviews':
+      return handleInterviewsQuery(query);
+    default:
+      return handleApplicationsQuery(query);
+  }
+}
+async function handleApplicationsQuery(query: any) {
+  const now = new Date();
+  const where: any = {
+    job: {
+      user: { user_id: query.user }, // Enforce job ownership
+      ...(query.filters.jobTitle && {
+        title: ILike(`%${query.filters.jobTitle}%`) // Case-insensitive search
+      })
+    },
+    ...(query.filters.status && {
+      status: In(['pending', 'accepted', 'rejected'].includes(query.filters.status)
+        ? query.filters.status.toLowerCase()
+        : 'pending') // Default to pending if invalid status
+    })
+  };
+
+  // Date filtering with immutability
+  if (query.filters.dateRange) {
+    where.appliedAt = (() => {
+      const startDate = new Date(now);
+      switch (query.filters.dateRange) {
         case 'last_7_days':
-          where.appliedAt = Between(
-            new Date(new Date().setDate(now.getDate() - 7)),
-            new Date()
-          );
-          break;
+          startDate.setDate(now.getDate() - 7);
+          return Between(startDate, now);
         case 'this_month':
-          where.appliedAt = Between(
+          return Between(
             new Date(now.getFullYear(), now.getMonth(), 1),
             new Date(now.getFullYear(), now.getMonth() + 1, 0)
           );
-          break;
+        default:
+          return undefined;
       }
-    }
+    })();
+  }
 
-    // Execute query
+  try {
     const applications = await applyDef.find({
       where,
-      relations: ['user', 'job'],
+      relations: ['job', 'user', 'job.user'], // Secure relations
+      take: 50, // Limit results
+      order: { appliedAt: 'DESC' }
     });
 
-    // Format response
-    const results = applications.map(app => ({
+    return applications.map(app => ({
+      type: 'application',
       id: app.id,
-      name: app.user?.name,
-      email: app.user?.email,
-      skills: app.user?.skills || [],
-      jobTitle: app.job?.title,
       status: app.status,
       appliedAt: app.appliedAt,
+      jobTitle: app.job?.title || 'N/A', // Fallback for deleted jobs
+      candidate: {
+        name: app.user?.name || 'Anonymous',
+        email: app.user?.email ? maskEmail(app.user.email) : 'N/A' // Email protection
+      },
+      jobOwner: app.job?.user?.name || 'Unknown' // Verification
     }));
-
-    return res.status(200).json({
-      ...response,
-      type: 'query',
-      data: filters.countOnly ? { count: results.length } : results,
-      context: {
-        previousFilters: filters,
-        totalResults: results.length
-      }
-    });
-
   } catch (error) {
-    console.error('Database Query Error:', error);
-    return res.status(500).json({
-      type: 'message',
-      state: 'ERROR',
-      content: "Hmm, my search didn't work as planned. Let's try different criteria.",
-      suggestions: ['Simplify query', 'Reset filters']
-    });
+    console.error('Applications Query Error:', error);
+    return []; // Fail-safe empty response
   }
-};
+}
 
-const handleClarification = (res: Response, response: any) => {
-  return res.status(200).json({
-    ...response,
-    context: {
-      needsClarification: true,
-      missingFields: response.context?.missingFields || []
-    }
-  });
-};
+// Helper function to protect PII
+function maskEmail(email: string): string {
+  const [name, domain] = email.split('@');
+  return `${name[0]}${'*'.repeat(name.length - 2)}${name.slice(-1)}@${domain}`;
+}
+async function handleJobPostsQuery(query: any) {
+  const where: any = {
+    user: { user_id: query.user },
+    ...(query.filters.jobTitle && {
+      title: ILike(`%${query.filters.jobTitle}%`)
+    })
+  };
 
-const handleChitchat = (res: Response, response: any) => {
-  return res.status(200).json({
-    ...response,
-    suggestions: ['Back to search', 'View help docs']
-  });
-};
+  // Status filter for job posts
+  if (query.filters.status) {
+    where.status = In(['active', 'draft', 'archived'].includes(query.filters.status)
+      ? query.filters.status
+      : 'active');
+  }
 
-const handleFallback = (res: Response) => {
-  return res.status(500).json({
-    type: 'message',
-    state: 'ERROR',
-    content: "I'm still learning - could you phrase that differently?",
-    suggestions: ['See examples', 'Contact human support']
+  // Date filter for job creation
+  if (query.filters.dateRange) {
+    where.createdAt = createDateFilter(query.filters.dateRange);
+  }
+
+  const jobs = await jobDef.find({
+    where,
+    relations: ['applications', 'interviews'],
+    take: 50,
+    order: { postedDate: 'DESC' }
   });
-};
+
+  return jobs.map(job => ({
+    id: job.job_id,
+    title: job.title,
+    status: job.postedDate,
+    createdAt: job.company,
+    applicationsCount: job.applications?.length || 0,
+    upcomingInterviews: job.interviews?.filter(i => new Date(i.scheduledAt) > new Date()).length || 0
+  }));
+}
+
+async function handleInterviewsQuery(query: any) {
+  const where: any = {
+    job: {
+      user: { user_id: query.user }
+    },
+    date: MoreThanOrEqual(new Date())
+  };
+
+  // Status filter for interviews
+  if (query.filters.status) {
+    where.status = In(['scheduled', 'completed', 'canceled'].includes(query.filters.status)
+      ? query.filters.status
+      : 'scheduled');
+  }
+
+  // Candidate name filter
+  if (query.filters.candidateName) {
+    where.application = { user: { name: ILike(`%${query.filters.candidateName}%`) } };
+  }
+
+  const interviews = await InterDef.find({
+    where,
+    relations: ['application', 'application.user', 'job'],
+    order: { scheduledAt: 'ASC' },
+    take: 50
+  });
+
+  return interviews.map(interview => ({
+    id: interview.interview_id,
+    date: interview.scheduledAt,
+    type: interview.mode,
+    status: interview.status,
+    candidateName: interview.application?.user?.name || 'Unknown',
+    jobTitle: interview.job?.title || 'N/A',
+    applicationStatus: interview.application?.status || 'N/A'
+  }));
+}
+
+// Reusable date filter creator
+function createDateFilter(range: string) {
+  const now = new Date();
+  switch (range) {
+    case 'last_7_days':
+      return Between(
+        new Date(now.setDate(now.getDate() - 7)),
+        new Date()
+      );
+    case 'this_month':
+      return Between(
+        new Date(now.getFullYear(), now.getMonth(), 1),
+        new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      );
+    default:
+      return undefined;
+  }
+}
 
 
 // controller to to sheduel interviews
