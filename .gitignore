@@ -2,6 +2,6 @@
 .vercel
 node_modules/
 
-
+src/utils/filesytem/credentials.json
 
 .early.coveragesrc/utils/filesytem/credentials.json
