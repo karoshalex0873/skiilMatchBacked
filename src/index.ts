@@ -42,7 +42,7 @@ app.use(cors({
 
 // welcome message
 app.get('', (req, res) => {
-  res.send("Welcome to the server build with docker🔥🔥🚀🚀!");
+  res.send("Welcome to the server build with docker🔥🔥🚀🚀 🚀!");
 })
 
 
