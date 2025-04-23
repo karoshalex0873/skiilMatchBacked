@@ -7,6 +7,7 @@ export interface Job {
   company: string;
   location: string;
   matchPercentage: number;
+  
   skills: string[];
   experienceLevel: string;
   postedDate: Date;
